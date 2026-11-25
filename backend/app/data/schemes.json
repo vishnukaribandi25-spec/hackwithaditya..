@@ -1,0 +1,34 @@
+[
+  {
+    "id": "mock-education-support",
+    "name": "MOCK DEVELOPMENT RECORD - Education Support",
+    "state": "Telangana",
+    "department": "Mock department (development only)",
+    "category": "education",
+    "description": "Fictional placeholder record for developing and testing the SchemeSathi API. This is not a government scheme.",
+    "benefits": ["Mock benefit placeholder; not an actual benefit."],
+    "eligibility_rules": ["Mock eligibility placeholder; not an actual requirement."],
+    "required_documents": ["Mock document placeholder; not an actual checklist."],
+    "application_url": null,
+    "source_url": null,
+    "last_verified": null,
+    "verification_status": "mock",
+    "supported_languages": ["en", "te"]
+  },
+  {
+    "id": "mock-agriculture-support",
+    "name": "MOCK DEVELOPMENT RECORD - Agriculture Support",
+    "state": "Karnataka",
+    "department": "Mock department (development only)",
+    "category": "agriculture",
+    "description": "Fictional placeholder record for developing and testing the SchemeSathi API. This is not a government scheme.",
+    "benefits": ["Mock benefit placeholder; not an actual benefit."],
+    "eligibility_rules": ["Mock eligibility placeholder; not an actual requirement."],
+    "required_documents": ["Mock document placeholder; not an actual checklist."],
+    "application_url": null,
+    "source_url": null,
+    "last_verified": null,
+    "verification_status": "mock",
+    "supported_languages": ["en", "te"]
+  }
+]
