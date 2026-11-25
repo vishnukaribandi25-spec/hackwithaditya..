@@ -52,6 +52,7 @@ class SchemeSourceMetadata(BaseModel):
 class EligibilityCheckResult(EligibilityResult):
     scheme_name: str
     source_metadata: SchemeSourceMetadata
+    ai_explanation: str | None = None
 
 
 class EligibilityCheckResponse(BaseModel):

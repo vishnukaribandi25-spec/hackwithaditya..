@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from typing import Literal
+
+from fastapi import APIRouter, Query
 from pydantic import BaseModel
 
 from app.models.eligibility import (
@@ -10,9 +12,11 @@ from app.models.eligibility import (
 from app.models.profile import UserProfile
 from app.models.scheme import Scheme
 from app.services.eligibility_engine import evaluate_all
+from app.services.gemini_service import GeminiService
 from app.services.scheme_service import load_schemes
 
 router = APIRouter(prefix="/eligibility", tags=["eligibility"])
+gemini_service = GeminiService()
 
 
 class SchemeMatch(EligibilityResult):
@@ -50,7 +54,10 @@ def match_schemes(profile: UserProfile) -> SchemeMatchResponse:
 
 
 @router.post("/check", response_model=EligibilityCheckResponse)
-def check_eligibility(profile: UserProfile) -> EligibilityCheckResponse:
+def check_eligibility(
+    profile: UserProfile,
+    language: Literal["en", "te"] = Query(default="en"),
+) -> EligibilityCheckResponse:
     schemes = load_schemes()
     results_by_id = {
         result.scheme_id: result
@@ -73,6 +80,11 @@ def check_eligibility(profile: UserProfile) -> EligibilityCheckResponse:
                     application_url=scheme.application_url,
                     last_verified=scheme.last_verified,
                     verification_status=scheme.verification_status,
+                ),
+                ai_explanation=(
+                    gemini_service.explain_eligibility(scheme, result, language)
+                    if scheme.verification_status == "verified"
+                    else None
                 ),
             )
         )

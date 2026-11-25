@@ -1,12 +1,12 @@
 # SchemeSathi
 
-SchemeSathi is a full-stack, multilingual government scheme discovery and eligibility guidance prototype. The backend currently provides health, scheme data, and profile validation APIs.
+SchemeSathi is a full-stack, multilingual government scheme discovery and eligibility guidance prototype. The backend provides health, scheme data, profile validation, deterministic eligibility, and optional AI explanations.
 
 ## Stack
 
 - Frontend: React, Vite, Tailwind CSS, React Router, Axios
 - Backend: Python, FastAPI, Pydantic
-- AI: planned; not enabled in the backend foundation
+- AI: Google Gen AI Python SDK for optional English/Telugu explanations
 - Data: JSON
 
 ## Run locally
@@ -18,12 +18,39 @@ cd C:\Users\VISHNU\Downloads\adityahack\schemesathi\backend
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 uvicorn app.main:app --reload --port 8000 --env-file .env
 ```
 
 The API listens at `http://127.0.0.1:8000`. Health check: `http://127.0.0.1:8000/api/health`.
 Interactive API documentation: `http://127.0.0.1:8000/docs`.
+
+### Configure Gemini (optional)
+
+The eligibility API works without Gemini; when the key is absent or the AI service
+fails, deterministic eligibility results are returned without an AI explanation.
+To enable explanations, edit `backend\.env`. If it does not exist yet, open
+PowerShell in the backend folder and create it from the example first:
+
+```powershell
+Copy-Item .env.example .env
+notepad .env
+```
+
+If `.env` already exists, do not overwrite it; just open it and add/update:
+
+```env
+GEMINI_API_KEY=your_google_genai_api_key
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+Keep the key only in `backend\.env`; it is ignored by Git. Never put it in source
+code or commit it. Start/restart the backend with `--env-file .env` to load it.
+`POST /api/eligibility/check?language=en` (or `language=te`) returns optional
+`ai_explanation` text only for schemes marked verified and containing source
+metadata. Gemini explains the deterministic result and cannot alter its status.
+The current catalog contains only mock records, so it will not call Gemini until
+officially sourced scheme records are added and verified.
 
 ### Frontend
 

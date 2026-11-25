@@ -4,6 +4,7 @@ from app.api.routes import eligibility as eligibility_route
 from app.main import app
 from app.models.eligibility import EligibilityRule
 from app.models.profile import UserProfile
+from app.models.scheme import Scheme
 from app.services.eligibility_engine import evaluate_eligibility
 
 client = TestClient(app)
@@ -266,3 +267,46 @@ def test_check_endpoint_handles_empty_scheme_catalog(monkeypatch):
     assert response.json()["potentially_eligible"] == []
     assert response.json()["not_eligible"] == []
     assert response.json()["needs_verification"] == []
+
+
+def test_check_endpoint_adds_ai_text_without_changing_engine_result(monkeypatch):
+    scheme = Scheme(
+        id="verified-demo",
+        name="Synthetic verified scheme",
+        state="Telangana",
+        department="Synthetic test department",
+        category="education",
+        description="A synthetic fixture, not an official scheme.",
+        benefits=["Synthetic test benefit."],
+        eligibility_rules=[EligibilityRule(type="state", values=["Karnataka"])],
+        required_documents=["Synthetic test document."],
+        application_url=None,
+        source_url="https://example.gov.in/scheme",
+        last_verified="2026-01-15",
+        verification_status="verified",
+        supported_languages=["en", "te"],
+    )
+
+    class ExplanationService:
+        def explain_eligibility(self, scheme, result, language):
+            assert scheme.id == result.scheme_id
+            assert language == "te"
+            return "AI explanation only."
+
+    monkeypatch.setattr(eligibility_route, "load_schemes", lambda: [scheme])
+    monkeypatch.setattr(
+        eligibility_route,
+        "gemini_service",
+        ExplanationService(),
+    )
+
+    response = client.post(
+        "/api/eligibility/check?language=te",
+        json={"state": "Telangana"},
+    )
+
+    assert response.status_code == 200
+    result = response.json()["not_eligible"][0]
+    assert result["status"] == "not_eligible"
+    assert result["failed_conditions"]
+    assert result["ai_explanation"] == "AI explanation only."

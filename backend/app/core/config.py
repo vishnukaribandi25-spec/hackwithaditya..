@@ -7,6 +7,8 @@ class Settings:
     app_name: str
     app_version: str
     frontend_origins: tuple[str, ...]
+    gemini_api_key: str | None
+    gemini_model: str
 
 
 def get_settings() -> Settings:
@@ -24,4 +26,6 @@ def get_settings() -> Settings:
         app_name=os.getenv("APP_NAME", "SchemeSathi API"),
         app_version=os.getenv("APP_VERSION", "1.0.0"),
         frontend_origins=frontend_origins,
+        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip() or None,
+        gemini_model=os.getenv("GEMINI_MODEL", "").strip() or "gemini-2.5-flash",
     )
