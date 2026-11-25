@@ -1,5 +1,6 @@
 import json
 import logging
+import time
 from typing import Literal
 
 import httpx
@@ -12,6 +13,9 @@ from app.models.eligibility import EligibilityResult
 from app.models.scheme import Scheme
 
 logger = logging.getLogger(__name__)
+MAX_TRANSIENT_RETRIES = 2
+BASE_RETRY_DELAY_SECONDS = 0.5
+TRANSIENT_API_STATUSES = {503, 504}
 
 
 class GeminiService:
@@ -83,24 +87,34 @@ class GeminiService:
         client = self._get_client()
         if client is None:
             return None
-        try:
-            response = client.models.generate_content(
-                model=get_settings().gemini_model,
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    system_instruction=SYSTEM_PROMPT,
-                    temperature=0.2,
-                    max_output_tokens=256,
-                ),
-            )
-            text = response.text
-            return text.strip() if text and text.strip() else None
-        except errors.APIError as exc:
-            logger.warning("Gemini request failed with HTTP status %s", exc.code)
-        except httpx.TimeoutException:
-            logger.warning("Gemini request timed out")
-        except httpx.TransportError:
-            logger.warning("Gemini request failed due to a transport error")
+        for attempt in range(MAX_TRANSIENT_RETRIES + 1):
+            try:
+                response = client.models.generate_content(
+                    model=get_settings().gemini_model,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=SYSTEM_PROMPT,
+                        temperature=0.2,
+                        max_output_tokens=256,
+                    ),
+                )
+                text = response.text
+                return text.strip() if text and text.strip() else None
+            except errors.APIError as exc:
+                if exc.code in TRANSIENT_API_STATUSES and attempt < MAX_TRANSIENT_RETRIES:
+                    time.sleep(BASE_RETRY_DELAY_SECONDS * (2**attempt))
+                    continue
+                logger.warning("Gemini request failed with HTTP status %s", exc.code)
+                return None
+            except httpx.TimeoutException:
+                if attempt < MAX_TRANSIENT_RETRIES:
+                    time.sleep(BASE_RETRY_DELAY_SECONDS * (2**attempt))
+                    continue
+                logger.warning("Gemini request timed out after retries")
+                return None
+            except httpx.TransportError:
+                logger.warning("Gemini request failed due to a transport error")
+                return None
         return None
 
     def _get_client(self) -> genai.Client | None:
@@ -112,12 +126,8 @@ class GeminiService:
             return None
 
         retry_options = types.HttpRetryOptions(
-            attempts=2,
-            initial_delay=0.5,
-            max_delay=2,
-            exp_base=2,
-            jitter=0.2,
-            http_status_codes=[429, 500, 502, 503, 504],
+            attempts=1,
+            http_status_codes=[503, 504],
         )
         self._client = genai.Client(
             api_key=settings.gemini_api_key,

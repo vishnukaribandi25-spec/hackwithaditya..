@@ -41,7 +41,7 @@ If `.env` already exists, do not overwrite it; just open it and add/update:
 
 ```env
 GEMINI_API_KEY=your_google_genai_api_key
-GEMINI_MODEL=gemini-2.5-flash
+GEMINI_MODEL=gemini-flash-latest
 ```
 
 Keep the key only in `backend\.env`; it is ignored by Git. Never put it in source

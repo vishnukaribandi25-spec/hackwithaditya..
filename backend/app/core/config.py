@@ -27,5 +27,5 @@ def get_settings() -> Settings:
         app_version=os.getenv("APP_VERSION", "1.0.0"),
         frontend_origins=frontend_origins,
         gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip() or None,
-        gemini_model=os.getenv("GEMINI_MODEL", "").strip() or "gemini-2.5-flash",
+        gemini_model=os.getenv("GEMINI_MODEL", "").strip() or "gemini-flash-latest",
     )
