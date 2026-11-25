@@ -1,6 +1,16 @@
+from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, StrictBool, StrictFloat, StrictInt, StrictStr
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    HttpUrl,
+    StrictBool,
+    StrictFloat,
+    StrictInt,
+    StrictStr,
+)
 
 RuleNumber = StrictInt | StrictFloat
 RuleValue = StrictStr | StrictInt | StrictFloat | StrictBool
@@ -30,3 +40,22 @@ class EligibilityResult(BaseModel):
     failed_conditions: list[str]
     missing_information: list[str]
     explanation_reasons: list[str]
+
+
+class SchemeSourceMetadata(BaseModel):
+    source_url: HttpUrl | None
+    application_url: HttpUrl | None
+    last_verified: date | None
+    verification_status: Literal["verified", "unverified", "mock"]
+
+
+class EligibilityCheckResult(EligibilityResult):
+    scheme_name: str
+    source_metadata: SchemeSourceMetadata
+
+
+class EligibilityCheckResponse(BaseModel):
+    potentially_eligible: list[EligibilityCheckResult]
+    not_eligible: list[EligibilityCheckResult]
+    needs_verification: list[EligibilityCheckResult]
+    disclaimer: str

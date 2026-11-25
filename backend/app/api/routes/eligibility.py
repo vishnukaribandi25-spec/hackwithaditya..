@@ -1,7 +1,12 @@
 from fastapi import APIRouter
 from pydantic import BaseModel
 
-from app.models.eligibility import EligibilityResult
+from app.models.eligibility import (
+    EligibilityCheckResponse,
+    EligibilityCheckResult,
+    EligibilityResult,
+    SchemeSourceMetadata,
+)
 from app.models.profile import UserProfile
 from app.models.scheme import Scheme
 from app.services.eligibility_engine import evaluate_all
@@ -39,6 +44,43 @@ def match_schemes(profile: UserProfile) -> SchemeMatchResponse:
         matches=matches,
         disclaimer=(
             "Eligibility results are informational, not official decisions. "
+            "Mock development records are not government schemes."
+        ),
+    )
+
+
+@router.post("/check", response_model=EligibilityCheckResponse)
+def check_eligibility(profile: UserProfile) -> EligibilityCheckResponse:
+    schemes = load_schemes()
+    results_by_id = {
+        result.scheme_id: result
+        for result in evaluate_all(profile, schemes)
+    }
+    grouped_results: dict[str, list[EligibilityCheckResult]] = {
+        "potentially_eligible": [],
+        "not_eligible": [],
+        "needs_verification": [],
+    }
+
+    for scheme in schemes:
+        result = results_by_id[scheme.id]
+        grouped_results[result.status].append(
+            EligibilityCheckResult(
+                **result.model_dump(),
+                scheme_name=scheme.name,
+                source_metadata=SchemeSourceMetadata(
+                    source_url=scheme.source_url,
+                    application_url=scheme.application_url,
+                    last_verified=scheme.last_verified,
+                    verification_status=scheme.verification_status,
+                ),
+            )
+        )
+
+    return EligibilityCheckResponse(
+        **grouped_results,
+        disclaimer=(
+            "Eligibility results are informational, not official decisions or approval. "
             "Mock development records are not government schemes."
         ),
     )

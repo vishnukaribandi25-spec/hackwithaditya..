@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.api.routes import eligibility as eligibility_route
 from app.main import app
 from app.models.eligibility import EligibilityRule
 from app.models.profile import UserProfile
@@ -206,3 +207,62 @@ def test_match_endpoint_returns_deterministic_results_without_gemini():
     }
     assert all(match["scheme"]["verification_status"] == "mock" for match in payload["matches"])
     assert all("explanation_reasons" in match for match in payload["matches"])
+
+
+def test_check_endpoint_groups_results_and_includes_source_metadata():
+    response = client.post(
+        "/api/eligibility/check",
+        json={"state": "Telangana", "education_level": "graduate"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert [item["scheme_id"] for item in payload["potentially_eligible"]] == [
+        "mock-education-support"
+    ]
+    assert [item["scheme_id"] for item in payload["not_eligible"]] == [
+        "mock-agriculture-support"
+    ]
+    assert payload["needs_verification"] == []
+
+    failed_match = payload["not_eligible"][0]
+    assert failed_match["failed_conditions"]
+    assert failed_match["source_metadata"] == {
+        "source_url": None,
+        "application_url": None,
+        "last_verified": None,
+        "verification_status": "mock",
+    }
+    assert "not official" in payload["disclaimer"].lower()
+
+
+def test_check_endpoint_groups_incomplete_profile_as_needs_verification():
+    response = client.post("/api/eligibility/check", json={})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["potentially_eligible"] == []
+    assert payload["not_eligible"] == []
+    assert len(payload["needs_verification"]) == 2
+    assert all(item["missing_information"] for item in payload["needs_verification"])
+
+
+def test_check_endpoint_rejects_invalid_profile():
+    response = client.post("/api/eligibility/check", json={"age": -1})
+
+    assert response.status_code == 422
+    assert any(
+        error["loc"][-1] == "age"
+        for error in response.json()["detail"]
+    )
+
+
+def test_check_endpoint_handles_empty_scheme_catalog(monkeypatch):
+    monkeypatch.setattr(eligibility_route, "load_schemes", lambda: [])
+
+    response = client.post("/api/eligibility/check", json={"state": "Telangana"})
+
+    assert response.status_code == 200
+    assert response.json()["potentially_eligible"] == []
+    assert response.json()["not_eligible"] == []
+    assert response.json()["needs_verification"] == []
