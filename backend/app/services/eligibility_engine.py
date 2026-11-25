@@ -12,13 +12,17 @@ def _label(rule: EligibilityRule) -> str:
     return rule.label or rule.type.replace("_", " ").strip().capitalize()
 
 
+def _normalize_text(value: str) -> str:
+    return " ".join(value.split()).casefold()
+
+
 def _same_value(actual: object, expected: object) -> bool:
     if isinstance(actual, bool) or isinstance(expected, bool):
         return type(actual) is type(expected) and actual == expected
     if isinstance(actual, Real) and isinstance(expected, Real):
         return actual == expected
     if isinstance(actual, str) and isinstance(expected, str):
-        return actual.casefold() == expected.casefold()
+        return _normalize_text(actual) == _normalize_text(expected)
     return type(actual) is type(expected) and actual == expected
 
 
@@ -32,10 +36,11 @@ def _evaluate_rule(
         "age": {"min", "max"},
         "annual_family_income": {"min", "max"},
         "income": {"min", "max"},
-        "state": {"values"},
+        "state": {"values", "not_values"},
         "occupation": {"values"},
         "education_level": {"values"},
         "gender": {"values"},
+        "social_category": {"values"},
         "attribute": {"attribute", "operator", "value", "values"},
     }
     if rule_type in allowed_fields:
@@ -79,11 +84,40 @@ def _evaluate_rule(
             return "failed", f"{label} is above the allowed maximum of {maximum} {unit}."
         return "matched", f"{label} satisfies the stated {unit} range."
 
+    if rule_type == "state":
+        allowed_values = rule.values or []
+        excluded_values = rule.not_values or []
+        if (
+            (not allowed_values and not excluded_values)
+            or not all(isinstance(value, str) and value.strip() for value in allowed_values)
+            or not all(isinstance(value, str) and value.strip() for value in excluded_values)
+        ):
+            return "missing", f"{label} rule has no valid allowed or excluded values; it needs manual verification."
+
+        if profile.state is None:
+            if (
+                allowed_values
+                and all(value.casefold() in {"all", "all india"} for value in allowed_values)
+                and not excluded_values
+            ):
+                return "matched", f"{label} is allowed for all states."
+            return "missing", f"{label} is not provided, so this rule could not be checked."
+
+        actual_state = _normalize_text(profile.state)
+        if actual_state in [_normalize_text(value) for value in excluded_values]:
+            return "failed", f"{label} is excluded from this scheme."
+        if allowed_values and not any(
+            value.casefold() in {"all", "all india"} for value in allowed_values
+        ):
+            if actual_state not in [_normalize_text(value) for value in allowed_values]:
+                return "failed", f"{label} does not match an allowed value."
+        return "matched", f"{label} matches the scheme's state availability."
+
     profile_fields = {
-        "state": "state",
         "occupation": "occupation",
         "education_level": "education_level",
         "gender": "gender",
+        "social_category": "social_category",
     }
     if rule_type in profile_fields:
         if not rule.values or not all(
@@ -91,12 +125,13 @@ def _evaluate_rule(
         ):
             return "missing", f"{label} rule has no valid allowed values; it needs manual verification."
         actual = getattr(profile, profile_fields[rule_type])
-        allowed_values = [value.casefold() for value in rule.values]
-        if rule_type == "state" and any(value in {"all", "all india"} for value in allowed_values):
-            return "matched", f"{label} is allowed for all states."
-        if actual is None:
+        allowed_values = [_normalize_text(value) for value in rule.values]
+        if actual is None or (
+            rule_type == "social_category"
+            and _normalize_text(actual) == "prefer not to say"
+        ):
             return "missing", f"{label} is not provided, so this rule could not be checked."
-        if actual.casefold() in allowed_values:
+        if _normalize_text(actual) in allowed_values:
             return "matched", f"{label} matches an allowed value."
         return "failed", f"{label} does not match any allowed value."
 
@@ -109,7 +144,7 @@ def _evaluate_rule(
             rule.attribute not in profile.additional_attributes
             or profile.additional_attributes[rule.attribute] is None
         ):
-            return "missing", f"{label} attribute '{rule.attribute}' is not provided."
+            return "missing", f"{label} is not provided, so this condition could not be checked."
 
         actual = profile.additional_attributes[rule.attribute]
         if rule.operator in {"equals", "not_equals"}:
@@ -128,6 +163,9 @@ def _evaluate_rule(
         if matched:
             return "matched", f"{label} matches the stated scheme-specific condition."
         return "failed", f"{label} does not match the stated scheme-specific condition."
+
+    if rule_type == "manual_verification":
+        return "missing", label
 
     return "missing", f"Rule type '{rule.type}' is unsupported and needs manual verification."
 

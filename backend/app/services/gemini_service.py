@@ -8,7 +8,12 @@ from google import genai
 from google.genai import errors, types
 
 from app.core.config import get_settings
-from app.core.prompts import SYSTEM_PROMPT, build_explanation_prompt
+from app.core.prompts import (
+    CHAT_SYSTEM_PROMPT,
+    SYSTEM_PROMPT,
+    build_chat_guidance_prompt,
+    build_explanation_prompt,
+)
 from app.models.eligibility import EligibilityResult
 from app.models.scheme import Scheme
 
@@ -83,7 +88,26 @@ class GeminiService:
             return "క్షమించండి, AI ప్రస్తుతం అందుబాటులో లేదు. అధికారిక పథక వివరాలను పరిశీలించండి."
         return "AI is unavailable right now. Please review the official scheme information."
 
-    def _generate(self, prompt: str) -> str | None:
+    def generate_guidance(
+        self,
+        intent: str,
+        language: Literal["en", "te"],
+        scheme_facts: list[dict[str, object]],
+        missing_information: list[str],
+    ) -> str | None:
+        prompt = build_chat_guidance_prompt(
+            intent=intent,
+            language=language,
+            scheme_facts=scheme_facts,
+            missing_information=missing_information,
+        )
+        return self._generate(prompt, CHAT_SYSTEM_PROMPT)
+
+    def _generate(
+        self,
+        prompt: str,
+        system_instruction: str = SYSTEM_PROMPT,
+    ) -> str | None:
         client = self._get_client()
         if client is None:
             return None
@@ -93,7 +117,7 @@ class GeminiService:
                     model=get_settings().gemini_model,
                     contents=prompt,
                     config=types.GenerateContentConfig(
-                        system_instruction=SYSTEM_PROMPT,
+                        system_instruction=system_instruction,
                         temperature=0.2,
                         max_output_tokens=256,
                     ),

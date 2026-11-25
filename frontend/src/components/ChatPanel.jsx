@@ -1,6 +1,7 @@
 import React, { useState } from "react"
 import { sendChat } from "../services/api"
 import { useApp } from "../context/AppContext"
+import { t } from "../i18n"
 
 export default function ChatPanel({ scheme }) {
   const { language } = useApp()
@@ -21,9 +22,7 @@ export default function ChatPanel({ scheme }) {
     } catch {
       setMessages((current) => [...current, {
         role: "assistant",
-        text: language === "te"
-          ? "AI ఇప్పుడు అందుబాటులో లేదు. పథక వివరాలను చూడండి."
-          : "AI is unavailable. Please review the verified scheme details."
+        text: t(language, "aiUnavailable")
       }])
     } finally {
       setLoading(false)
@@ -34,31 +33,29 @@ export default function ChatPanel({ scheme }) {
     <aside className="chat-panel">
       <div className="chat-header">
         <div>
-          <strong>{language === "te" ? "సహాయక చాట్" : "Scheme Assistant"}</strong>
-          <span>{language === "te" ? "తెలుగు లేదా ఇంగ్లీష్‌లో అడగండి" : "Ask in English or Telugu"}</span>
+          <strong>{t(language, "assistant")}</strong>
+          <span>{t(language, "askLanguage")}</span>
         </div>
       </div>
       <div className="chat-messages" aria-live="polite">
         {messages.length === 0 && (
           <p className="chat-empty">
-            {language === "te"
-              ? "ఈ పథకం గురించి నమ్మకంగా చెప్పగల సమాచారం మాత్రమే."
-              : "Ask about documents, benefits or application steps."}
+            {t(language, "chatEmpty")}
           </p>
         )}
         {messages.map((message, index) => (
           <div key={index} className={`bubble ${message.role}`}>{message.text}</div>
         ))}
-        {loading && <div className="bubble assistant">Thinking…</div>}
+        {loading && <div className="bubble assistant">{t(language, "thinking")}</div>}
       </div>
       <form className="chat-form" onSubmit={submit}>
         <input
           value={input}
           onChange={(event) => setInput(event.target.value)}
-          placeholder={language === "te" ? "మీ ప్రశ్న రాయండి…" : "Ask a question…"}
-          aria-label="Chat message"
+          placeholder={t(language, "chatPlaceholder")}
+          aria-label={t(language, "chatMessage")}
         />
-        <button type="submit" disabled={loading} aria-label="Send">→</button>
+        <button type="submit" disabled={loading} aria-label={t(language, "send")}>→</button>
       </form>
     </aside>
   )

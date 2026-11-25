@@ -24,6 +24,7 @@ class EligibilityRule(BaseModel):
     min: RuleNumber | None = None
     max: RuleNumber | None = None
     values: list[RuleValue] | None = None
+    not_values: list[RuleValue] | None = None
     attribute: str | None = None
     operator: str | None = None
     value: RuleValue | None = None
@@ -52,6 +53,12 @@ class SchemeSourceMetadata(BaseModel):
 class EligibilityCheckResult(EligibilityResult):
     scheme_name: str
     source_metadata: SchemeSourceMetadata
+    verification_required: bool = False
+    verification_status: Literal["verified", "unverified", "mock"] = "unverified"
+    source_url: HttpUrl | None = None
+    last_verified_date: date | None = None
+    is_mock: bool = False
+    verification_steps: list[str] = Field(default_factory=list)
     ai_explanation: str | None = None
 
 
@@ -59,4 +66,6 @@ class EligibilityCheckResponse(BaseModel):
     potentially_eligible: list[EligibilityCheckResult]
     not_eligible: list[EligibilityCheckResult]
     needs_verification: list[EligibilityCheckResult]
+    mock_records: list[EligibilityCheckResult] = Field(default_factory=list)
+    unverified_records: list[EligibilityCheckResult] = Field(default_factory=list)
     disclaimer: str

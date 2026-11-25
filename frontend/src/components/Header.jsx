@@ -1,28 +1,29 @@
 import React from "react"
 import { Link } from "react-router-dom"
 import { useApp } from "../context/AppContext"
+import { t } from "../i18n"
 
 export default function Header() {
   const { language, setLanguage } = useApp()
   return (
     <header className="header">
-      <Link className="brand" to="/" aria-label="SchemeSathi home">
+      <Link className="brand" to="/" aria-label={t(language, "homeAria")}>
         <span className="brand-mark">SS</span>
         <span>
           <strong>SchemeSathi</strong>
-          <small>{language === "te" ? "పథక సహాయకుడు" : "Scheme Guide"}</small>
+          <small>{t(language, "schemeGuide")}</small>
         </span>
       </Link>
       <nav className="header-actions">
-        <Link className="nav-link" to="/profile">{language === "te" ? "ప్రొఫైల్" : "Profile"}</Link>
-        <Link className="nav-link" to="/schemes">{language === "te" ? "పథకాలు" : "Schemes"}</Link>
+        <Link className="nav-link" to="/profile">{t(language, "profile")}</Link>
+        <Link className="nav-link" to="/catalog">{t(language, "verifiedSchemes")}</Link>
         <button
           className="language-button"
           type="button"
           onClick={() => setLanguage(language === "en" ? "te" : "en")}
-          aria-label="Change language"
+          aria-label={t(language, "changeLanguage")}
         >
-          {language === "en" ? "తెలుగు" : "English"}
+          {t(language, "switchLanguageLabel")}
         </button>
       </nav>
     </header>

@@ -1,54 +1,105 @@
 import React, { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import SchemeCard from "../components/SchemeCard"
-import { listSchemes } from "../services/api"
+import { matchSchemes } from "../services/api"
 import { useApp } from "../context/AppContext"
+import { localizeEligibilityText, localizedError, t } from "../i18n"
 
 export default function ResultsPage() {
-  const { language, matches } = useApp()
-  const [schemes, setSchemes] = useState([])
-  const telugu = language === "te"
+  const { language, profile, matches, setMatches } = useApp()
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+
   useEffect(() => {
-    if (!matches.matches) {
-      listSchemes().then((response) => setSchemes(response.data)).catch(() => setSchemes([]))
+    let active = true
+    if (!profile || matches?.matches) {
+      setLoading(false)
+      return () => { active = false }
     }
-  }, [matches])
+
+    setLoading(true)
+    setError("")
+    matchSchemes(profile)
+      .then((response) => {
+        if (active) setMatches(response.data)
+      })
+      .catch((requestError) => {
+        if (active) setError(requestError)
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+
+    return () => { active = false }
+  }, [matches, profile, setMatches])
+
+  const recommendations = matches?.matches || []
+  const notApplicable = matches?.not_applicable || []
+  const isFarmer = profile?.occupation?.trim().replace(/\s+/g, " ").toLowerCase() === "farmer"
+  const hasResults = recommendations.length > 0 || notApplicable.length > 0
+
   return (
     <main className="page">
       <div className="results-heading">
         <div>
-          <span className="eyebrow">{telugu ? "మీ పథక ఫలితాలు" : "Your scheme results"}</span>
-          <h1>{telugu ? "సంభావ్య సరిపోలికలు" : "Potential matches"}</h1>
+          <span className="eyebrow">{t(language, "yourResults")}</span>
+          <h1>{isFarmer ? t(language, "farmerResults") : t(language, "potentialMatches")}</h1>
         </div>
-        <Link className="button secondary" to="/profile">{telugu ? "ప్రొఫైల్ మార్చండి" : "Edit profile"}</Link>
+        <Link className="button secondary" to="/profile">{t(language, "editProfile")}</Link>
       </div>
-      {!matches.matches ? (
-        <>
-          {schemes.length === 0 ? (
-            <div className="empty-state"><p>Loading schemes…</p></div>
-          ) : (
-            <div className="results-grid">
-              {schemes.map((scheme) => (
-                <SchemeCard
-                  key={scheme.id}
-                  match={{
-                    scheme,
-                    status: "needs_verification",
-                    explanation: telugu
-                      ? "పరిశీలించడానికి మీ ప్రొఫైల్ పూర్తి చేయండి."
-                      : "Complete your profile to verify this match."
-                  }}
-                />
-              ))}
-            </div>
-          )}
-        </>
+      {loading ? (
+        <div className="empty-state"><p>{t(language, "loadingResults")}</p></div>
+      ) : error ? (
+        <div className="empty-state"><p className="form-error">{localizedError(error, language)}</p></div>
+      ) : !profile ? (
+        <div className="empty-state">
+          <p>{t(language, "completeProfile")}</p>
+          <Link className="button primary" to="/profile">{t(language, "createProfile")}</Link>
+        </div>
       ) : (
         <>
-          <p className="disclaimer">{matches.disclaimer}</p>
-          <div className="results-grid">
-            {matches.matches.map((match) => <SchemeCard key={match.scheme.id} match={match} />)}
-          </div>
+          {matches?.disclaimer && <p className="disclaimer">{localizeEligibilityText(matches.disclaimer, language)}</p>}
+          {recommendations.some((match) => match.status === "potentially_eligible") && (
+            <section className="results-section">
+              <h2>{isFarmer
+                ? t(language, "likelyFarmerSchemes")
+                : t(language, "potentiallyRelevantSchemes")}</h2>
+              <div className="results-grid">
+                {recommendations
+                  .filter((match) => match.status === "potentially_eligible")
+                  .map((match) => <SchemeCard key={match.scheme.id} match={match} />)}
+              </div>
+            </section>
+          )}
+          {recommendations.some((match) => match.status === "needs_verification") && (
+            <section className="results-section">
+              <h2>{t(language, "needsVerification")}</h2>
+              <div className="results-grid">
+                {recommendations
+                  .filter((match) => match.status === "needs_verification")
+                  .map((match) => <SchemeCard key={match.scheme.id} match={match} />)}
+              </div>
+            </section>
+          )}
+          {notApplicable.length > 0 && (
+            <section className="results-section">
+              <h2>{t(language, "notApplicable")}</h2>
+              <p className="section-note">{t(language, "notApplicableNote")}</p>
+              <div className="results-grid">
+                {notApplicable.map((match) => <SchemeCard key={match.scheme.id} match={match} />)}
+              </div>
+            </section>
+          )}
+          {recommendations.length === 0 && notApplicable.length > 0 && (
+            <div className="empty-state">
+              <p>{t(language, "noRecommendations")}</p>
+            </div>
+          )}
+          {!hasResults && (
+            <div className="empty-state">
+              <p>{t(language, "noEvaluatedSchemes")}</p>
+            </div>
+          )}
         </>
       )}
     </main>

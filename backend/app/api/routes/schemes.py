@@ -17,7 +17,14 @@ def list_schemes(
         schemes = [
             scheme
             for scheme in schemes
-            if scheme.state.casefold() in {requested_state, "all india"}
+            if (
+                scheme.state.casefold() == requested_state
+                or (
+                    scheme.state.casefold() == "all india"
+                    and requested_state
+                    not in {excluded.casefold() for excluded in scheme.state_exclusions}
+                )
+            )
         ]
     if category:
         requested_category = category.strip().casefold()

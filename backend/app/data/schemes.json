@@ -36,5 +36,275 @@
     "last_verified": null,
     "verification_status": "mock",
     "supported_languages": ["en", "te"]
+  },
+  {
+    "id": "pm-kisan-samman-nidhi",
+    "name": "Pradhan Mantri Kisan Samman Nidhi (PM-KISAN)",
+    "state": "All India",
+    "state_exclusions": [],
+    "government_level": "central",
+    "department": "Department of Agriculture and Farmers Welfare, Ministry of Agriculture and Farmers Welfare, Government of India",
+    "category": "agriculture",
+    "description": "A central farmer-support programme administered by the Department of Agriculture and Farmers Welfare. The official portal reports scheme installments and mandatory e-KYC for registered farmers.",
+    "benefits": [
+      "The official portal reports periodic PM-KISAN installments; the reviewed page does not state the benefit amount."
+    ],
+    "eligibility_summary": "The reviewed official portal identifies land-ownership and multiple-family-member cases as potential exclusion issues subject to physical verification. Complete eligibility criteria and the amount should be checked on the official portal.",
+    "eligibility_rules": [
+      {
+        "type": "occupation",
+        "label": "Applicant is a farmer",
+        "values": ["farmer"]
+      },
+      {
+        "type": "attribute",
+        "label": "Applicant belongs to a landholding farmer family",
+        "attribute": "pm_kisan_landholding_farmer_family",
+        "operator": "equals",
+        "value": true
+      },
+      {
+        "type": "manual_verification",
+        "label": "Any landholding status provided is self-reported. SchemeSathi does not verify land records, official beneficiary records, or applicable exclusions; e-KYC status has not been checked. Confirm these through official PM-KISAN services."
+      }
+    ],
+    "required_documents": [],
+    "application_process": [
+      "For registered farmers, complete mandatory e-KYC using the official portal, PM-KISAN mobile application, a Common Service Centre biometric option, or State Authorized User login.",
+      "Use the official Know Your Status service to check status and follow any verification instructions."
+    ],
+    "unavailable_fields": [
+      "complete_eligibility_criteria",
+      "benefit_amount",
+      "required_documents",
+      "new_applicant_registration_steps"
+    ],
+    "application_url": "https://pmkisan.gov.in/",
+    "source_url": "https://pmkisan.gov.in/homenew.aspx",
+    "last_verified": "2026-11-25",
+    "verification_status": "verified",
+    "supported_languages": ["en"]
+  },
+  {
+    "id": "pmay-gramin",
+    "name": "Pradhan Mantri Awaas Yojana - Gramin (PMAY-G)",
+    "state": "All India",
+    "state_exclusions": [],
+    "government_level": "central",
+    "department": "Ministry of Rural Development, Government of India",
+    "category": "housing",
+    "description": "The Government of India's rural housing programme. Its official citizen portal provides a household eligibility questionnaire, application tracking, and sanction/payment status services.",
+    "benefits": [
+      "Rural housing support through sanctioned houses; the reviewed portal page does not state an assistance amount."
+    ],
+    "eligibility_summary": "The official questionnaire checks vulnerability, rural residence, housing condition, household assets, Kisan Credit Card limits, government employment, registered enterprises, monthly earnings, tax status, and irrigated or unirrigated land. The final household selection requires the official process.",
+    "eligibility_rules": [
+      {
+        "type": "attribute",
+        "label": "Household resides in a rural area",
+        "attribute": "resides_in_rural_area",
+        "operator": "equals",
+        "value": true
+      },
+      {
+        "type": "attribute",
+        "label": "Household does not own a pucca house",
+        "attribute": "household_owns_pucca_house",
+        "operator": "equals",
+        "value": false
+      },
+      {
+        "type": "manual_verification",
+        "label": "The full household questionnaire and official selection criteria require verification"
+      }
+    ],
+    "required_documents": [],
+    "application_process": [
+      "Use the official Check Eligibility questionnaire to review household conditions.",
+      "Use Track Your Application to check verification and Permanent Wait List status.",
+      "Use View Sanction and Payment to check sanction and installment outcomes."
+    ],
+    "unavailable_fields": [
+      "assistance_amount",
+      "required_documents",
+      "complete_machine_evaluable_eligibility_conditions"
+    ],
+    "application_url": "https://pmayg.dord.gov.in/netiayHome/home.aspx",
+    "source_url": "https://pmayg.dord.gov.in/netiayHome/questions.html",
+    "last_verified": "2026-11-25",
+    "verification_status": "verified",
+    "supported_languages": ["en"]
+  },
+  {
+    "id": "pradhan-mantri-matru-vandana-yojana",
+    "name": "Pradhan Mantri Matru Vandana Yojana (PMMVY)",
+    "state": "All India",
+    "state_exclusions": ["Telangana", "Odisha"],
+    "government_level": "central",
+    "department": "Ministry of Women and Child Development, Government of India",
+    "category": "women",
+    "description": "A maternity benefit scheme providing financial support to eligible pregnant and lactating women, including partial wage-loss compensation and support for maternal and child health.",
+    "benefits": [
+      "For the first child, ₹5,000 in two installments: ₹3,000 after pregnancy registration and the required antenatal checks, then ₹2,000 after birth registration and completion of the first immunization cycle at 14 weeks.",
+      "For a second child who is a girl, ₹6,000 in one installment after birth registration and completion of the first immunization cycle at 14 weeks."
+    ],
+    "eligibility_summary": "The official FAQ lists qualifying categories including SC/ST women, women with at least 40% disability, BPL or NFSA ration-card holders, PM-JAY beneficiaries, e-Shram card holders, women farmers receiving PM-KISAN, MGNREGA job-card holders, women with annual family income below ₹8 lakh, and pregnant/lactating AWWs, AWHs, and ASHAs. It also states an age range of 18 years 7 months to under 55 at childbirth and registration within 270 days after childbirth. The scheme is not implemented in Telangana or Odisha according to the FAQ.",
+    "eligibility_rules": [
+      {
+        "type": "state",
+        "label": "State availability",
+        "values": ["All India"],
+        "not_values": ["Telangana", "Odisha"]
+      },
+      {
+        "type": "manual_verification",
+        "label": "The qualifying category, childbirth timing, and supporting evidence require official verification"
+      }
+    ],
+    "required_documents": [
+      "Aadhaar card (the official scheme portal requires it; SchemeSathi does not collect it)",
+      "Aadhaar-mapped bank or post-office account details (not collected by SchemeSathi)",
+      "Proof of one qualifying eligibility category",
+      "MCP/RCHI card",
+      "Last menstrual period (LMP) and antenatal check-up (ANC) dates",
+      "Child birth certificate and immunization details",
+      "Mobile number for application/disbursement status (not collected by SchemeSathi)"
+    ],
+    "application_process": [
+      "An eligible woman may self-register through the official PMMVY portal, or request application assistance from an Anganwadi Worker or ASHA.",
+      "For the first child, the official FAQ specifies pregnancy registration and at least two antenatal check-ups, followed by birth registration and completion of the first immunization cycle.",
+      "For a second child who is a girl, the official FAQ specifies pregnancy registration and at least two antenatal check-ups, followed by birth registration and completion of the first immunization cycle.",
+      "The official FAQ says registration is available up to 270 days after childbirth."
+    ],
+    "unavailable_fields": [],
+    "application_url": "https://pmmvy.wcd.gov.in/",
+    "source_url": "https://pmmvy.wcd.gov.in/Home/FrequentlyAskedQuestions",
+    "last_verified": "2026-11-25",
+    "verification_status": "verified",
+    "supported_languages": ["en"]
+  },
+  {
+    "id": "pm-usp-csss",
+    "name": "PM-USP Central Sector Scheme of Scholarship for College and University Students (CSSS)",
+    "state": "All India",
+    "state_exclusions": [],
+    "government_level": "central",
+    "department": "Not identified in the reviewed official scheme notice",
+    "category": "education",
+    "description": "A central scholarship scheme for college and university students. The National Scholarship Portal announced that fresh applications were open when this record was verified.",
+    "benefits": [
+      "Scholarship assistance; the reviewed official notice does not specify the amount or award conditions."
+    ],
+    "eligibility_summary": "Scheme-specific eligibility criteria were not available in the reviewed official portal notice. Check the current CSSS guidelines and application window on the National Scholarship Portal.",
+    "eligibility_rules": [
+      {
+        "type": "occupation",
+        "label": "Applicant is a student",
+        "values": ["student"]
+      },
+      {
+        "type": "manual_verification",
+        "label": "Scheme-specific academic, income, and selection criteria require verification"
+      }
+    ],
+    "required_documents": [],
+    "application_process": [
+      "Complete the required One Time Registration (OTR) on the National Scholarship Portal.",
+      "Check the CSSS application window and submit the scheme application through the National Scholarship Portal."
+    ],
+    "unavailable_fields": [
+      "department",
+      "detailed_eligibility_criteria",
+      "benefit_amount_and_award_conditions",
+      "required_documents"
+    ],
+    "application_url": "https://scholarships.gov.in/otrapplication/#/login-page",
+    "source_url": "https://scholarships.gov.in/",
+    "last_verified": "2026-11-25",
+    "verification_status": "verified",
+    "supported_languages": ["en"]
+  },
+  {
+    "id": "ntr-bharosa-pension",
+    "name": "NTR Bharosa Pension Scheme",
+    "state": "Andhra Pradesh",
+    "state_exclusions": [],
+    "government_level": "state",
+    "department": "Government of Andhra Pradesh (specific department not identified on the reviewed scheme page)",
+    "category": "social-security",
+    "description": "Andhra Pradesh social-security pensions for listed vulnerable groups, including older persons, widows, single women, persons with disabilities, and people with specified chronic conditions.",
+    "benefits": [
+      "The official page states ₹4,000 per month for listed categories including old-age persons, widows, single women, fishermen, weavers, and other listed groups.",
+      "The official page states ₹6,000 per month for persons with disabilities and multi-deformity/leprosy categories.",
+      "The official page states ₹10,000 per month for specified chronic-disease categories."
+    ],
+    "eligibility_summary": "The official page lists covered pension categories but does not provide complete category-specific age, income, or documentation criteria. It also shows conflicting amounts for fully disabled persons; verify the current amount and category eligibility with the Andhra Pradesh portal.",
+    "eligibility_rules": [
+      {
+        "type": "state",
+        "label": "State availability",
+        "values": ["Andhra Pradesh"]
+      },
+      {
+        "type": "manual_verification",
+        "label": "Pension-category and category-specific qualification criteria require official verification"
+      }
+    ],
+    "required_documents": [],
+    "application_process": [],
+    "unavailable_fields": [
+      "detailed_eligibility_criteria",
+      "required_documents",
+      "application_process",
+      "fully_disabled_pension_amount"
+    ],
+    "application_url": "https://sspensions.ap.gov.in/SSP",
+    "source_url": "https://sspensions.ap.gov.in/SSP",
+    "last_verified": "2026-11-25",
+    "verification_status": "verified",
+    "supported_languages": ["en", "te"]
+  },
+  {
+    "id": "telangana-rythu-bharosa",
+    "name": "Telangana Rythu Bharosa",
+    "state": "Telangana",
+    "state_exclusions": [],
+    "government_level": "state",
+    "department": "Department of Agriculture, Government of Telangana",
+    "category": "agriculture",
+    "description": "A Telangana farmer-support programme. Its official portal describes timely financial assistance and access to agricultural resources to support farmers and agricultural productivity.",
+    "benefits": [
+      "A July 2026 Telangana government release states that Rythu Bharosa assistance had been increased to ₹12,000 per acre."
+    ],
+    "eligibility_summary": "The official portal identifies farmers as the intended audience but does not publish detailed beneficiary eligibility or exclusions. A July 2026 government release reports the updated assistance amount but does not establish detailed qualifying rules. Current eligibility must be verified with the Department of Agriculture.",
+    "eligibility_rules": [
+      {
+        "type": "state",
+        "label": "State availability",
+        "values": ["Telangana"]
+      },
+      {
+        "type": "occupation",
+        "label": "Applicant is a farmer",
+        "values": ["farmer"]
+      },
+      {
+        "type": "manual_verification",
+        "label": "The official Telangana Rythu Bharosa portal does not publish detailed beneficiary eligibility, exclusions, required documents, or complete application instructions. Verify current beneficiary criteria with the Department of Agriculture before applying."
+      }
+    ],
+    "required_documents": [],
+    "application_process": [],
+    "unavailable_fields": [
+      "detailed_beneficiary_eligibility",
+      "eligibility_exclusions",
+      "required_documents",
+      "application_process"
+    ],
+    "application_url": "https://rythubharosa.telangana.gov.in/",
+    "source_url": "https://www.telangana.gov.in/news/press-releases/2026/07/honble-cm-sri-a-revanth-reddy-participated-in-rythu-ashirvada-sabha-releases-rythu-bharosa-funds-to-farmers-issues-e-pattadar-passbooks-addresses-gathering-at-jagannadhapuram-chintakani/",
+    "last_verified": "2026-11-25",
+    "verification_status": "verified",
+    "supported_languages": ["en", "te"]
   }
 ]
