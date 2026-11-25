@@ -7,7 +7,10 @@
     "category": "education",
     "description": "Fictional placeholder record for developing and testing the SchemeSathi API. This is not a government scheme.",
     "benefits": ["Mock benefit placeholder; not an actual benefit."],
-    "eligibility_rules": ["Mock eligibility placeholder; not an actual requirement."],
+    "eligibility_rules": [
+      {"type": "state", "values": ["Telangana"]},
+      {"type": "education_level", "values": ["undergraduate", "graduate"]}
+    ],
     "required_documents": ["Mock document placeholder; not an actual checklist."],
     "application_url": null,
     "source_url": null,
@@ -23,7 +26,10 @@
     "category": "agriculture",
     "description": "Fictional placeholder record for developing and testing the SchemeSathi API. This is not a government scheme.",
     "benefits": ["Mock benefit placeholder; not an actual benefit."],
-    "eligibility_rules": ["Mock eligibility placeholder; not an actual requirement."],
+    "eligibility_rules": [
+      {"type": "state", "values": ["Karnataka"]},
+      {"type": "occupation", "values": ["farmer"]}
+    ],
     "required_documents": ["Mock document placeholder; not an actual checklist."],
     "application_url": null,
     "source_url": null,

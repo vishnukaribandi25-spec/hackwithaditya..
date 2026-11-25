@@ -6,6 +6,8 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse
 
 from app.api.routes.health import router as health_router
+from app.api.routes.eligibility import router as eligibility_router
+from app.api.routes.eligibility import router as eligibility_router
 from app.api.routes.profile import router as profile_router
 from app.api.routes.schemes import router as schemes_router
 from app.core.config import get_settings
@@ -24,6 +26,8 @@ app.add_middleware(
 )
 
 app.include_router(health_router, prefix="/api")
+app.include_router(eligibility_router, prefix="/api")
+app.include_router(eligibility_router, prefix="/api")
 app.include_router(profile_router, prefix="/api")
 app.include_router(schemes_router, prefix="/api")
 

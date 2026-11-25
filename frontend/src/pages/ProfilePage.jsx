@@ -7,13 +7,8 @@ const initial = {
   state: "",
   age: "",
   occupation: "",
-  education: "",
-  annual_family_income: "",
-  gender: "",
-  category: "",
-  is_farmer: "",
-  is_student: "",
-  is_unemployed: ""
+  education_level: "",
+  annual_family_income: ""
 }
 
 export default function ProfilePage() {
@@ -34,19 +29,14 @@ export default function ProfilePage() {
     setLoading(true)
     setError("")
     const payload = {
-      state: form.state,
+      state: form.state || null,
       age: form.age ? Number(form.age) : null,
       occupation: form.occupation || null,
-      education: form.education || null,
-      annual_family_income: form.annual_family_income ? Number(form.annual_family_income) : null,
-      gender: form.gender || null,
-      category: form.category || null,
-      is_farmer: form.is_farmer === "" ? null : form.is_farmer === "yes",
-      is_student: form.is_student === "" ? null : form.is_student === "yes",
-      is_unemployed: form.is_unemployed === "" ? null : form.is_unemployed === "yes"
+      education_level: form.education_level || null,
+      annual_family_income: form.annual_family_income ? Number(form.annual_family_income) : null
     }
     try {
-      const response = await matchSchemes(payload, language)
+      const response = await matchSchemes(payload)
       setProfile(payload)
       setMatches(response.data)
       navigate("/schemes")
@@ -66,8 +56,8 @@ export default function ProfilePage() {
       </div>
       <form className="profile-form" onSubmit={submit}>
         <div className="form-grid">
-          <label>{telugu ? "రాష్ట్రం" : "State"} *
-            <input name="state" value={form.state} onChange={update} placeholder="e.g. Telangana" required />
+          <label>{telugu ? "రాష్ట్రం" : "State"}
+            <input name="state" value={form.state} onChange={update} placeholder="e.g. Telangana" />
           </label>
           <label>{telugu ? "వయస్సు" : "Age"}
             <input name="age" type="number" min="0" max="120" value={form.age} onChange={update} placeholder="e.g. 24" />
@@ -76,29 +66,10 @@ export default function ProfilePage() {
             <input name="occupation" value={form.occupation} onChange={update} placeholder="e.g. Farmer / Student" />
           </label>
           <label>{telugu ? "విద్య స్థాయి" : "Education"}
-            <input name="education" value={form.education} onChange={update} placeholder="e.g. Graduate" />
+            <input name="education_level" value={form.education_level} onChange={update} placeholder="e.g. Graduate" />
           </label>
           <label>{telugu ? "వార్షిక కుటుంబ ఆదాయం" : "Annual family income"}
             <input name="annual_family_income" type="number" min="0" value={form.annual_family_income} onChange={update} placeholder="₹" />
-          </label>
-          <label>{telugu ? "లింగం" : "Gender"}
-            <select name="gender" value={form.gender} onChange={update}>
-              <option value="">Prefer not to say</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
-            </select>
-          </label>
-          <label>{telugu ? "వర్గం" : "Category"}
-            <select name="category" value={form.category} onChange={update}>
-              <option value="">Not provided</option><option value="general">General</option><option value="obc">OBC</option><option value="sc">SC</option><option value="st">ST</option><option value="ews">EWS</option>
-            </select>
-          </label>
-          <label>{telugu ? "మీరు రైతు?" : "Are you a farmer?"}
-            <select name="is_farmer" value={form.is_farmer} onChange={update}><option value="">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select>
-          </label>
-          <label>{telugu ? "మీరు విద్యార్థి?" : "Are you a student?"}
-            <select name="is_student" value={form.is_student} onChange={update}><option value="">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select>
-          </label>
-          <label>{telugu ? "మీరు నిరుద్యోగి?" : "Are you unemployed?"}
-            <select name="is_unemployed" value={form.is_unemployed} onChange={update}><option value="">Not sure</option><option value="yes">Yes</option><option value="no">No</option></select>
           </label>
         </div>
         {error && <p className="form-error">{error}</p>}

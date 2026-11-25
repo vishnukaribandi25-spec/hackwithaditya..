@@ -1,105 +1,196 @@
+from collections.abc import Iterable
+from numbers import Real
+
+from pydantic import ValidationError
+
+from app.models.eligibility import EligibilityResult, EligibilityRule
 from app.models.profile import UserProfile
 from app.models.scheme import Scheme
-from app.models.eligibility import EligibilityReason, MatchResult
 
 
-def _profile_value(profile: UserProfile, key: str):
-    return getattr(profile, key, None)
+def _label(rule: EligibilityRule) -> str:
+    return rule.label or rule.type.replace("_", " ").strip().capitalize()
 
 
-def _reason(code: str, label: str, detail: str, status: str) -> EligibilityReason:
-    return EligibilityReason(code=code, label=label, detail=detail, status=status)
+def _same_value(actual: object, expected: object) -> bool:
+    if isinstance(actual, bool) or isinstance(expected, bool):
+        return type(actual) is type(expected) and actual == expected
+    if isinstance(actual, Real) and isinstance(expected, Real):
+        return actual == expected
+    if isinstance(actual, str) and isinstance(expected, str):
+        return actual.casefold() == expected.casefold()
+    return type(actual) is type(expected) and actual == expected
 
 
-def evaluate(profile: UserProfile, scheme: Scheme) -> MatchResult:
-    conditions = scheme.conditions
-    reasons: list[EligibilityReason] = []
+def _evaluate_rule(
+    profile: UserProfile,
+    rule: EligibilityRule,
+) -> tuple[str, str]:
+    rule_type = rule.type.strip().casefold()
+    label = _label(rule)
+    allowed_fields = {
+        "age": {"min", "max"},
+        "annual_family_income": {"min", "max"},
+        "income": {"min", "max"},
+        "state": {"values"},
+        "occupation": {"values"},
+        "education_level": {"values"},
+        "gender": {"values"},
+        "attribute": {"attribute", "operator", "value", "values"},
+    }
+    if rule_type in allowed_fields:
+        unsupported_fields = rule.model_fields_set - allowed_fields[rule_type] - {"type", "label"}
+        if unsupported_fields:
+            names = ", ".join(sorted(unsupported_fields))
+            return "missing", f"{label} rule contains unsupported fields ({names}) and needs manual verification."
 
-    state = conditions.get("states")
-    if state:
-        if profile.state.lower() in [item.lower() for item in state]:
-            reasons.append(_reason("state", "Residence", f"Your state matches the scheme requirement.", "satisfied"))
-        elif "all" in [item.lower() for item in state]:
-            reasons.append(_reason("state", "Residence", "The scheme is available across India.", "satisfied"))
+    if rule_type in {"age", "annual_family_income", "income"}:
+        profile_key = "age" if rule_type == "age" else "annual_family_income"
+        unit = "years" if rule_type == "age" else "annual family income"
+        minimum, maximum = rule.min, rule.max
+        if (
+            (minimum is not None and (isinstance(minimum, bool) or not isinstance(minimum, Real)))
+            or (maximum is not None and (isinstance(maximum, bool) or not isinstance(maximum, Real)))
+            or (minimum is None and maximum is None)
+            or (minimum is not None and maximum is not None and minimum > maximum)
+            or (
+                rule_type == "age"
+                and (
+                    (minimum is not None and minimum < 0)
+                    or (maximum is not None and maximum > 120)
+                )
+            )
+            or (
+                rule_type != "age"
+                and (
+                    (minimum is not None and minimum < 0)
+                    or (maximum is not None and maximum < 0)
+                )
+            )
+        ):
+            return "missing", f"{label} rule is incomplete or invalid; it needs manual verification."
+
+        actual = getattr(profile, profile_key)
+        if actual is None:
+            return "missing", f"{label} is not provided, so this rule could not be checked."
+        if minimum is not None and actual < minimum:
+            return "failed", f"{label} is below the required minimum of {minimum} {unit}."
+        if maximum is not None and actual > maximum:
+            return "failed", f"{label} is above the allowed maximum of {maximum} {unit}."
+        return "matched", f"{label} satisfies the stated {unit} range."
+
+    profile_fields = {
+        "state": "state",
+        "occupation": "occupation",
+        "education_level": "education_level",
+        "gender": "gender",
+    }
+    if rule_type in profile_fields:
+        if not rule.values or not all(
+            isinstance(value, str) and value.strip() for value in rule.values
+        ):
+            return "missing", f"{label} rule has no valid allowed values; it needs manual verification."
+        actual = getattr(profile, profile_fields[rule_type])
+        allowed_values = [value.casefold() for value in rule.values]
+        if rule_type == "state" and any(value in {"all", "all india"} for value in allowed_values):
+            return "matched", f"{label} is allowed for all states."
+        if actual is None:
+            return "missing", f"{label} is not provided, so this rule could not be checked."
+        if actual.casefold() in allowed_values:
+            return "matched", f"{label} matches an allowed value."
+        return "failed", f"{label} does not match any allowed value."
+
+    if rule_type == "attribute":
+        if not rule.attribute or not rule.operator:
+            return "missing", f"{label} rule is missing its attribute or operator."
+        if rule.operator not in {"equals", "not_equals", "in", "not_in"}:
+            return "missing", f"{label} uses unsupported operator '{rule.operator}'."
+        if (
+            rule.attribute not in profile.additional_attributes
+            or profile.additional_attributes[rule.attribute] is None
+        ):
+            return "missing", f"{label} attribute '{rule.attribute}' is not provided."
+
+        actual = profile.additional_attributes[rule.attribute]
+        if rule.operator in {"equals", "not_equals"}:
+            if rule.value is None:
+                return "missing", f"{label} rule is missing its comparison value."
+            matched = _same_value(actual, rule.value)
+            if rule.operator == "not_equals":
+                matched = not matched
         else:
-            reasons.append(_reason("state", "Residence", f"The scheme is not listed for {profile.state}.", "not_satisfied"))
+            if not rule.values:
+                return "missing", f"{label} rule is missing its allowed values."
+            matched = any(_same_value(actual, value) for value in rule.values)
+            if rule.operator == "not_in":
+                matched = not matched
 
-    age = conditions.get("age")
-    if age:
-        minimum = age.get("min")
-        maximum = age.get("max")
-        if profile.age is None:
-            reasons.append(_reason("age", "Age", "Your age is needed to verify this condition.", "needs_verification"))
-        elif (minimum is None or profile.age >= minimum) and (maximum is None or profile.age <= maximum):
-            reasons.append(_reason("age", "Age", f"Age {profile.age} is within the stated range.", "satisfied"))
+        if matched:
+            return "matched", f"{label} matches the stated scheme-specific condition."
+        return "failed", f"{label} does not match the stated scheme-specific condition."
+
+    return "missing", f"Rule type '{rule.type}' is unsupported and needs manual verification."
+
+
+def evaluate_eligibility(
+    profile: UserProfile,
+    scheme_id: str,
+    eligibility_rules: Iterable[EligibilityRule | dict[str, object]],
+) -> EligibilityResult:
+    rules = list(eligibility_rules)
+    matched_conditions: list[str] = []
+    failed_conditions: list[str] = []
+    missing_information: list[str] = []
+    explanation_reasons: list[str] = []
+
+    if not rules:
+        missing_information.append("No eligibility rules are available to assess this scheme.")
+
+    for index, raw_rule in enumerate(rules, start=1):
+        try:
+            rule = (
+                raw_rule
+                if isinstance(raw_rule, EligibilityRule)
+                else EligibilityRule.model_validate(raw_rule)
+            )
+        except ValidationError:
+            detail = f"Eligibility rule {index} is malformed and needs manual verification."
+            missing_information.append(detail)
+            explanation_reasons.append(detail)
+            continue
+
+        outcome, detail = _evaluate_rule(profile, rule)
+        explanation_reasons.append(detail)
+        if outcome == "matched":
+            matched_conditions.append(detail)
+        elif outcome == "failed":
+            failed_conditions.append(detail)
         else:
-            reasons.append(_reason("age", "Age", f"Age {profile.age} is outside the stated range.", "not_satisfied"))
+            missing_information.append(detail)
 
-    income = conditions.get("annual_family_income_max")
-    if income is not None:
-        if profile.annual_family_income is None:
-            reasons.append(_reason("income", "Annual family income", "Income is needed to verify this condition.", "needs_verification"))
-        elif profile.annual_family_income <= income:
-            reasons.append(_reason("income", "Annual family income", "Income is within the stated limit.", "satisfied"))
-        else:
-            reasons.append(_reason("income", "Annual family income", "Income is above the stated limit.", "not_satisfied"))
-
-    occupation = conditions.get("occupations")
-    if occupation:
-        if not profile.occupation:
-            reasons.append(_reason("occupation", "Occupation", "Your occupation is needed to verify this condition.", "needs_verification"))
-        elif profile.occupation.lower() in [item.lower() for item in occupation]:
-            reasons.append(_reason("occupation", "Occupation", "Your occupation matches the scheme.", "satisfied"))
-        else:
-            reasons.append(_reason("occupation", "Occupation", "Your occupation does not match the listed criteria.", "not_satisfied"))
-
-    gender = conditions.get("genders")
-    if gender:
-        if not profile.gender:
-            reasons.append(_reason("gender", "Gender", "Gender is needed to verify this condition.", "needs_verification"))
-        elif profile.gender.lower() in [item.lower() for item in gender]:
-            reasons.append(_reason("gender", "Gender", "Gender condition is satisfied.", "satisfied"))
-        else:
-            reasons.append(_reason("gender", "Gender", "Gender condition is not satisfied.", "not_satisfied"))
-
-    education = conditions.get("education")
-    if education:
-        if not profile.education:
-            reasons.append(_reason("education", "Education", "Education information is needed.", "needs_verification"))
-        elif any(value.lower() in profile.education.lower() for value in education):
-            reasons.append(_reason("education", "Education", "Education level appears to match.", "satisfied"))
-        else:
-            reasons.append(_reason("education", "Education", "Education level does not match.", "not_satisfied"))
-
-    for key, label in (
-        ("is_farmer", "Farmer status"),
-        ("is_student", "Student status"),
-        ("is_unemployed", "Employment status"),
-    ):
-        if key in conditions:
-            required = bool(conditions[key])
-            actual = _profile_value(profile, key)
-            if actual is None:
-                reasons.append(_reason(key, label, f"{label} is needed to verify this condition.", "needs_verification"))
-            elif actual == required:
-                reasons.append(_reason(key, label, f"{label} matches.", "satisfied"))
-            else:
-                reasons.append(_reason(key, label, f"{label} does not match.", "not_satisfied"))
-
-    category = conditions.get("categories")
-    if category:
-        if not profile.category:
-            reasons.append(_reason("category", "Category", "Category is needed to verify this condition.", "needs_verification"))
-        elif profile.category.lower() in [item.lower() for item in category]:
-            reasons.append(_reason("category", "Category", "Category matches.", "satisfied"))
-        else:
-            reasons.append(_reason("category", "Category", "Category does not match.", "not_satisfied"))
-
-    if any(reason.status == "not_satisfied" for reason in reasons):
+    if failed_conditions:
         status = "not_eligible"
-    elif any(reason.status == "needs_verification" for reason in reasons):
+    elif missing_information:
         status = "needs_verification"
     else:
         status = "potentially_eligible"
 
-    return MatchResult(scheme=scheme, status=status, reasons=reasons)
+    return EligibilityResult(
+        scheme_id=scheme_id,
+        status=status,
+        matched_conditions=matched_conditions,
+        failed_conditions=failed_conditions,
+        missing_information=missing_information,
+        explanation_reasons=explanation_reasons,
+    )
+
+
+def evaluate(profile: UserProfile, scheme: Scheme) -> EligibilityResult:
+    return evaluate_eligibility(profile, scheme.id, scheme.eligibility_rules)
+
+
+def evaluate_all(
+    profile: UserProfile,
+    schemes: Iterable[Scheme],
+) -> list[EligibilityResult]:
+    return [evaluate(profile, scheme) for scheme in schemes]

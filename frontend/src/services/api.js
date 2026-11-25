@@ -8,7 +8,6 @@ const api = axios.create({
 export const health = () => api.get("/health")
 export const listSchemes = () => api.get("/schemes")
 export const getScheme = (id) => api.get(`/schemes/${id}`)
-export const matchSchemes = (profile, language) =>
-  api.post("/eligibility/match", profile, { params: { language } })
+export const matchSchemes = (profile) => api.post("/eligibility/match", profile)
 export const sendChat = (message, language, schemeContext) =>
   api.post("/chat", { message, language, scheme_context: schemeContext })

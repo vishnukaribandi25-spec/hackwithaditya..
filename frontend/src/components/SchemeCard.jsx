@@ -10,18 +10,23 @@ const statusConfig = {
 
 export default function SchemeCard({ match }) {
   const { language } = useApp()
-  const status = statusConfig[match.status]
+  const status = statusConfig[match.status] || statusConfig.needs_verification
   const scheme = match.scheme
+  const verificationLabel = scheme.verification_status === "mock"
+    ? "Mock development data"
+    : scheme.verification_status === "verified"
+      ? `Verified ${scheme.last_verified || ""}`
+      : "Not verified"
   return (
     <article className="scheme-card">
       <div className="scheme-card-top">
         <span className={`status ${status.className}`}>{status[language]}</span>
-        <span className="verified">Verified {scheme.last_verified}</span>
+        <span className="verified">{verificationLabel}</span>
       </div>
-      <h3>{language === "te" ? scheme.name_te : scheme.name}</h3>
+      <h3>{language === "te" ? scheme.name_te || scheme.name : scheme.name}</h3>
       <p className="department">{scheme.department}</p>
-      <p className="description">{language === "te" ? scheme.description_te : scheme.description}</p>
-      <p className="explanation">{match.explanation}</p>
+      <p className="description">{language === "te" ? scheme.description_te || scheme.description : scheme.description}</p>
+      <p className="explanation">{match.explanation || match.explanation_reasons?.join(" ")}</p>
       <div className="card-actions">
         <Link className="button secondary" to={`/schemes/${scheme.id}`}>
           {language === "te" ? "వివరాలు చూడండి" : "View details"}

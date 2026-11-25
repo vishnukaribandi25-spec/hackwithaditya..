@@ -1,10 +1,208 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
-
+from app.models.eligibility import EligibilityRule
+from app.models.profile import UserProfile
+from app.services.eligibility_engine import evaluate_eligibility
 
 client = TestClient(app)
 
-def test_eligibility_route_is_not_enabled_yet():
-    response = client.post("/api/eligibility/match", json={})
-    assert response.status_code == 404
+
+def demo_rules() -> list[EligibilityRule]:
+    return [
+        EligibilityRule(type="state", values=["Telangana"]),
+        EligibilityRule(type="age", min=18, max=60),
+        EligibilityRule(type="annual_family_income", min=100000, max=300000),
+        EligibilityRule(type="occupation", values=["student"]),
+        EligibilityRule(type="education_level", values=["undergraduate"]),
+        EligibilityRule(type="gender", values=["female"]),
+        EligibilityRule(
+            type="attribute",
+            attribute="first_generation_student",
+            operator="equals",
+            value=True,
+        ),
+    ]
+
+
+def complete_profile(**overrides) -> UserProfile:
+    values = {
+        "state": "Telangana",
+        "age": 24,
+        "annual_family_income": 200000,
+        "occupation": "Student",
+        "education_level": "Undergraduate",
+        "gender": "female",
+        "additional_attributes": {"first_generation_student": True},
+    }
+    values.update(overrides)
+    return UserProfile(**values)
+
+
+def test_all_supported_conditions_satisfied():
+    result = evaluate_eligibility(complete_profile(), "demo-education", demo_rules())
+
+    assert result.scheme_id == "demo-education"
+    assert result.status == "potentially_eligible"
+    assert len(result.matched_conditions) == 7
+    assert result.failed_conditions == []
+    assert result.missing_information == []
+
+
+def test_one_failed_condition_means_not_eligible():
+    result = evaluate_eligibility(
+        complete_profile(state="Andhra Pradesh"),
+        "demo-education",
+        [EligibilityRule(type="state", values=["Telangana"])],
+    )
+
+    assert result.status == "not_eligible"
+    assert result.failed_conditions
+    assert result.matched_conditions == []
+
+
+def test_missing_age_needs_verification():
+    result = evaluate_eligibility(
+        complete_profile(age=None),
+        "demo-age",
+        [EligibilityRule(type="age", min=18, max=60)],
+    )
+
+    assert result.status == "needs_verification"
+    assert result.missing_information
+    assert result.matched_conditions == []
+
+
+def test_missing_income_needs_verification():
+    result = evaluate_eligibility(
+        complete_profile(annual_family_income=None),
+        "demo-income",
+        [EligibilityRule(type="annual_family_income", max=300000)],
+    )
+
+    assert result.status == "needs_verification"
+    assert result.missing_information
+
+
+def test_unknown_additional_attribute_value_needs_verification():
+    result = evaluate_eligibility(
+        complete_profile(additional_attributes={"first_generation_student": None}),
+        "demo-attribute",
+        [
+            EligibilityRule(
+                type="attribute",
+                attribute="first_generation_student",
+                operator="equals",
+                value=True,
+            )
+        ],
+    )
+
+    assert result.status == "needs_verification"
+    assert result.missing_information
+
+
+def test_age_and_income_boundaries_are_inclusive():
+    rules = [
+        EligibilityRule(type="age", min=18, max=60),
+        EligibilityRule(type="annual_family_income", min=100000, max=300000),
+    ]
+
+    lower_bound = evaluate_eligibility(
+        complete_profile(age=18, annual_family_income=100000),
+        "demo-boundaries",
+        rules,
+    )
+    upper_bound = evaluate_eligibility(
+        complete_profile(age=60, annual_family_income=300000),
+        "demo-boundaries",
+        rules,
+    )
+
+    assert lower_bound.status == "potentially_eligible"
+    assert upper_bound.status == "potentially_eligible"
+
+
+def test_unknown_rule_type_needs_verification():
+    result = evaluate_eligibility(
+        complete_profile(),
+        "demo-unknown",
+        [EligibilityRule(type="household_size", min=4)],
+    )
+
+    assert result.status == "needs_verification"
+    assert "unsupported" in result.missing_information[0].lower()
+
+
+def test_unsupported_field_on_known_rule_needs_verification():
+    result = evaluate_eligibility(
+        complete_profile(),
+        "demo-unsupported-field",
+        [EligibilityRule(type="age", min=18, operator="approximately")],
+    )
+
+    assert result.status == "needs_verification"
+    assert "unsupported fields" in result.missing_information[0].lower()
+
+
+def test_malformed_rule_needs_verification():
+    result = evaluate_eligibility(
+        complete_profile(),
+        "demo-malformed-rule",
+        [{"type": "age", "min": "eighteen"}],
+    )
+
+    assert result.status == "needs_verification"
+    assert "malformed" in result.missing_information[0].lower()
+
+
+def test_multiple_failed_conditions_are_reported():
+    result = evaluate_eligibility(
+        complete_profile(state="Karnataka", occupation="Teacher"),
+        "demo-multiple-failures",
+        [
+            EligibilityRule(type="state", values=["Telangana"]),
+            EligibilityRule(type="occupation", values=["Student"]),
+        ],
+    )
+
+    assert result.status == "not_eligible"
+    assert len(result.failed_conditions) == 2
+
+
+def test_known_failure_takes_precedence_over_missing_information():
+    result = evaluate_eligibility(
+        complete_profile(state="Karnataka", age=None),
+        "demo-failure-and-missing",
+        [
+            EligibilityRule(type="state", values=["Telangana"]),
+            EligibilityRule(type="age", min=18),
+        ],
+    )
+
+    assert result.status == "not_eligible"
+    assert result.failed_conditions
+    assert result.missing_information
+
+
+def test_no_rules_needs_verification():
+    result = evaluate_eligibility(complete_profile(), "demo-no-rules", [])
+
+    assert result.status == "needs_verification"
+    assert result.missing_information
+
+
+def test_match_endpoint_returns_deterministic_results_without_gemini():
+    response = client.post(
+        "/api/eligibility/match",
+        json={"state": "Telangana", "education_level": "graduate"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert {match["scheme_id"] for match in payload["matches"]} == {
+        "mock-education-support",
+        "mock-agriculture-support",
+    }
+    assert all(match["scheme"]["verification_status"] == "mock" for match in payload["matches"])
+    assert all("explanation_reasons" in match for match in payload["matches"])

@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
 
+from app.models.eligibility import EligibilityRule
+
 
 class Scheme(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -14,7 +16,7 @@ class Scheme(BaseModel):
     category: str = Field(min_length=1)
     description: str = Field(min_length=1)
     benefits: list[str] = Field(min_length=1)
-    eligibility_rules: list[str] = Field(min_length=1)
+    eligibility_rules: list[EligibilityRule]
     required_documents: list[str] = Field(min_length=1)
     application_url: HttpUrl | None
     source_url: HttpUrl | None

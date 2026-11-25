@@ -48,11 +48,31 @@ cd C:\Users\VISHNU\Downloads\adityahack\schemesathi\backend
 - `GET /api/schemes?state=Telangana&category=education`
 - `GET /api/schemes/{scheme_id}`
 - `POST /api/profile/validate`
+- `POST /api/eligibility/match`
 
 The current scheme catalog contains clearly marked mock development records. Their source and application URLs are `null`; do not use them as real government guidance.
 
 The profile validation endpoint keeps profile data in request memory only and rejects unknown fields and sensitive additional-attribute keys.
 
+## Eligibility evaluation
+
+The Python engine evaluates each scheme's structured `eligibility_rules`. It supports `state`, `age`, `annual_family_income`, `occupation`, `education_level`, `gender`, and explicit `attribute` rules against `additional_attributes`. Numeric minimum and maximum bounds are inclusive. Age or income rules with inverted bounds need verification instead of being treated as passed.
+
+Each result separates passed rules (`matched_conditions`), failed rules (`failed_conditions`), and rules that cannot be checked (`missing_information`). Any failed rule makes the status `not_eligible`; otherwise missing or unsupported rules make it `needs_verification`; only all-passed rules make it `potentially_eligible`. No rules also means `needs_verification`. The engine does not use Gemini.
+
+Rule examples (development-only, not official eligibility criteria):
+
+```json
+[
+  {"type": "state", "values": ["Telangana"]},
+  {"type": "age", "min": 18, "max": 60},
+  {"type": "annual_family_income", "max": 300000},
+  {"type": "occupation", "values": ["student"]},
+  {"type": "education_level", "values": ["undergraduate"]},
+  {"type": "attribute", "attribute": "first_generation_student", "operator": "equals", "value": true}
+]
+```
+
 ## Privacy and guidance
 
-Eligibility guidance is planned for a later milestone. The current scheme catalog is mock development data; real scheme information must be verified against official government sources before use.
+The current scheme catalog is mock development data; real scheme information must be verified against official government sources before use.
